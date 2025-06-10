@@ -1,0 +1,1518 @@
+<!DOCTYPE html>
+<html lang="vi">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kiểm tra trắc nghiệm</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 20px;
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            text-align: center;
+        }
+
+        .quiz-info {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: 10px;
+        }
+
+        .loading-screen,
+        .quiz-container,
+        .result-container {
+            padding: 40px;
+            text-align: center;
+        }
+
+        .hidden {
+            display: none;
+        }
+
+        .question-container {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+        }
+
+        .question-text {
+            font-size: 18px;
+            margin-bottom: 20px;
+            line-height: 1.6;
+        }
+
+        .options-container {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .option {
+            background: white;
+            border: 2px solid #e9ecef;
+            border-radius: 8px;
+            padding: 15px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .option:hover {
+            border-color: #667eea;
+            background: #f8f9ff;
+        }
+
+        .option.selected {
+            border-color: #667eea;
+            background: #667eea;
+            color: white;
+        }
+
+        .option.correct {
+            border-color: #28a745;
+            background: #28a745;
+            color: white;
+        }
+
+        .option.incorrect {
+            border-color: #dc3545;
+            background: #dc3545;
+            color: white;
+        }
+
+        .navigation {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: 20px;
+        }
+
+        .btn {
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 16px;
+            transition: background 0.3s ease;
+        }
+
+        .btn:hover:not(:disabled) {
+            background: #5a6fd8;
+        }
+
+        .btn:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 8px;
+            background: #e9ecef;
+            border-radius: 4px;
+            overflow: hidden;
+            margin: 20px 0;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: #667eea;
+            transition: width 0.3s ease;
+        }
+
+        .result-container {
+            text-align: center;
+        }
+
+        .score {
+            font-size: 2em;
+            color: #667eea;
+            margin: 20px 0;
+        }
+
+        .settings {
+            margin-bottom: 20px;
+            text-align: left;
+        }
+
+        .settings label {
+            font-size: 16px;
+            margin-right: 10px;
+        }
+
+        .settings select,
+        .settings input[type="checkbox"] {
+            padding: 8px;
+            border-radius: 5px;
+            border: 1px solid #ccc;
+            font-size: 16px;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Kiểm tra trắc nghiệm</h1>
+            <div class="quiz-info">
+                <span id="questionNumber">Câu 1</span>
+                <span id="timer">00:00</span>
+                <span id="correctCount">Số câu đúng: 0</span>
+            </div>
+            <div class="progress-bar">
+                <div id="progressBar" class="progress-fill" style="width: 0%;"></div>
+            </div>
+        </div>
+
+        <div id="loadingScreen" class="loading-screen">
+            <h2>Đang chuẩn bị câu hỏi...</h2>
+            <div class="settings">
+                <label for="numQuestions">Số câu hỏi:</label>
+                <select id="numQuestions">
+                    <option value="10">10 câu</option>
+                    <option value="20">20 câu</option>
+                    <option value="30">30 câu</option>
+                    <option value="106">Tất cả (106 câu)</option>
+                </select>
+                <br><br>
+                <label for="realTimeScoring">Bật chấm điểm thời gian thực:</label>
+                <input type="checkbox" id="realTimeScoring" checked>
+            </div>
+            <button id="startBtn" class="btn">Bắt đầu</button>
+        </div>
+
+        <div id="quizContainer" class="quiz-container hidden">
+            <div class="question-container">
+                <div id="questionText" class="question-text"></div>
+                <div id="optionsContainer" class="options-container"></div>
+            </div>
+
+            <div class="navigation">
+                <button id="prevBtn" class="btn hidden">Câu trước</button>
+                <span id="currentQuestion">1</span> / <span id="totalQuestions">30</span>
+                <button id="nextBtn" class="btn">Câu tiếp</button>
+                <button id="submitBtn" class="btn">Nộp bài</button>
+            </div>
+        </div>
+
+        <div id="resultContainer" class="result-container hidden">
+            <h2>Kết quả bài thi</h2>
+            <div id="finalScore" class="score"></div>
+            <div id="scoreMessage"></div>
+            <button id="restartBtn" class="btn">Làm lại</button>
+        </div>
+    </div>
+
+    <script>
+        // Full question data (106 questions)
+        const allQuestions = [
+            {
+                question: "What is the main difference between Use-Case Points (UCP) and Function Points (FP)?",
+                options: [
+                    "UCP is only for embedded systems",
+                    "UCP is based on the Use-Case model, while FP is based on data components",
+                    "FP can only be applied to business applications, while UCP is universal",
+                    "FP calculates system response time, whereas UCP does not"
+                ],
+                correct: 1
+            },
+            {
+                question: "Function Points (FP) are best used to measure:",
+                options: [
+                    "Number of lines of code",
+                    "Software functionality",
+                    "Execution time of a program",
+                    "Memory consumption"
+                ],
+                correct: 1
+            },
+            {
+                question: "Which of the following is NOT a characteristic of software measurement?",
+                options: [
+                    "It should be objective",
+                    "It should be repeatable",
+                    "It should vary based on developer experience",
+                    "It should provide meaningful insights"
+                ],
+                correct: 2
+            },
+            {
+                question: "The main advantage of Function Points over LOC is:",
+                options: [
+                    "They are easier to count",
+                    "They can be used early in development",
+                    "They are language-dependent",
+                    "They measure software performance"
+                ],
+                correct: 1
+            },
+            {
+                question: "In the Use-Case Point (UCP) method, an Average actor is:",
+                options: [
+                    "A person using a GUI",
+                    "A system interacting through a communication protocol",
+                    "A system with a well-defined API",
+                    "A person using a command-line interface"
+                ],
+                correct: 2
+            },
+            {
+                question: "Halstead’s complexity measure considers which of the following?",
+                options: [
+                    "Number of defects",
+                    "Number of function calls",
+                    "Number of operators and operands",
+                    "Number of loops in a program"
+                ],
+                correct: 2
+            },
+            {
+                question: "Cyclomatic complexity is a measure of:",
+                options: [
+                    "Number of independent execution paths in a program",
+                    "Number of function calls in a program",
+                    "Number of operators in a program",
+                    "Number of lines of code in a program"
+                ],
+                correct: 0
+            },
+            {
+                question: "Which of the following factors affects the accuracy of Function Point estimation?",
+                options: [
+                    "Using historical data",
+                    "Lack of complete software requirements",
+                    "Counting user interactions",
+                    "Evaluating system architecture"
+                ],
+                correct: 1
+            },
+            {
+                question: "The term “Effort” in software measurement refers to:",
+                options: [
+                    "Number of defects found per module",
+                    "Total person-hours required for development",
+                    "Memory consumption of the program",
+                    "Number of classes in a system"
+                ],
+                correct: 1
+            },
+            {
+                question: "The Function Point Analysis (FPA) was first introduced by:",
+                options: [
+                    "McCabe",
+                    "Basili",
+                    "Albrecht",
+                    "Halstead"
+                ],
+                correct: 2
+            },
+            {
+                question: "Which software metric is best for estimating the size of an application before development starts?",
+                options: [
+                    "Lines of Code (LOC)",
+                    "Function Points (FP)",
+                    "Cyclomatic Complexity",
+                    "Halstead’s Metric"
+                ],
+                correct: 1
+            },
+            {
+                question: "In the Goal-Question-Metric (GQM) approach, what is the first step?",
+                options: [
+                    "Define metrics",
+                    "Identify goals",
+                    "Collect data",
+                    "Perform statistical analysis"
+                ],
+                correct: 1
+            },
+            {
+                question: "What is the primary challenge in measuring software size using Function Points?",
+                options: [
+                    "Function Point counting is automated",
+                    "Function Points depend on execution speed",
+                    "Function Points can only be used after implementation",
+                    "Function Points require detailed software specifications"
+                ],
+                correct: 3
+            },
+            {
+                question: "Cyclomatic Complexity is a direct measure of:",
+                options: [
+                    "Code maintainability",
+                    "Number of independent paths in a program",
+                    "Function calls in a program",
+                    "Number of user interactions"
+                ],
+                correct: 1
+            },
+            {
+                question: "Which of the following is not part of the Function Point (FP) computation?",
+                options: [
+                    "External Inputs (EI)",
+                    "Internal Logical Files (ILF)",
+                    "Number of function calls",
+                    "External Outputs (EO)"
+                ],
+                correct: 2
+            },
+            {
+                question: "In Use-Case Point (UCP) estimation, a Complex Use Case contains how many transactions?",
+                options: [
+                    "1-3",
+                    "4-7",
+                    "More than 7",
+                    "Exactly 10"
+                ],
+                correct: 2
+            },
+            {
+                question: "Which factor affects both Function Points (FP) and Use-Case Points (UCP)?",
+                options: [
+                    "Code length",
+                    "Number of transactions",
+                    "Number of defects",
+                    "Memory usage"
+                ],
+                correct: 1
+            },
+            {
+                question: "Which of the following is an internal software attribute?",
+                options: [
+                    "Reliability",
+                    "Maintainability",
+                    "Size (LOC, FP, UCP)",
+                    "Performance"
+                ],
+                correct: 1
+            },
+            {
+                question: "The formula for calculating Use-Case Points (UCP) is:",
+                options: [
+                    "UCP = LOC × VAF",
+                    "UCP = Defects × Test Coverage",
+                    "UCP = ILF × EIF",
+                    "UCP = (UAW + UUCW) × VAF"
+                ],
+                correct: 3
+            },
+            {
+                question: "Which of the following reduces the accuracy of Function Point estimation?",
+                options: [
+                    "Lack of complete requirements",
+                    "Using historical data",
+                    "Counting user interactions",
+                    "Evaluating system architecture"
+                ],
+                correct: 0
+            },
+            {
+                question: "Which of these measurement techniques is most language-independent?",
+                options: [
+                    "Lines of Code (LOC)",
+                    "Function Points (FP)",
+                    "Halstead’s Metric",
+                    "Cyclomatic Complexity"
+                ],
+                correct: 1
+            },
+            {
+                question: "Which of the following is true about Object Points (OP)?",
+                options: [
+                    "OP is calculated using lines of code",
+                    "OP is only used for Java-based applications",
+                    "OP counts screens, reports, and third-generation components",
+                    "OP measures software execution speed"
+                ],
+                correct: 2
+            },
+            {
+                question: "Which complexity metric calculates the number of linearly independent paths?",
+                options: [
+                    "Halstead’s Complexity",
+                    "Object Point Calculation",
+                    "Function Point Count",
+                    "Cyclomatic Complexity"
+                ],
+                correct: 3
+            },
+            {
+                question: "In Halstead’s metrics, difficulty (D) is calculated using:",
+                options: [
+                    "Number of test cases",
+                    "Number of distinct operators and operands",
+                    "Number of logical statements",
+                    "Number of defects in code"
+                ],
+                correct: 1
+            },
+            {
+                question: "What is the primary weakness of Lines of Code (LOC) as a size metric?",
+                options: [
+                    "It depends on the programming language",
+                    "It does not measure complexity",
+                    "It cannot be used to estimate cost",
+                    "It cannot measure productivity"
+                ],
+                correct: 0
+            },
+            {
+                question: "Which of the following best describes software measurement?",
+                options: [
+                    "The process of debugging software",
+                    "The process of tracking hardware failures",
+                    "The process of assigning numbers to attributes of software entities",
+                    "The process of estimating hardware requirements"
+                ],
+                correct: 2
+            },
+            {
+                question: "A software metric is considered valid if it:",
+                options: [
+                    "Always increases over time",
+                    "Can only be applied to large projects",
+                    "Accurately represents the property it measures",
+                    "Can be calculated using LOC"
+                ],
+                correct: 2
+            },
+            {
+                question: "Which software metric is best for evaluating code complexity?",
+                options: [
+                    "Function Points",
+                    "Object Points",
+                    "Use-Case Points",
+                    "Cyclomatic Complexity"
+                ],
+                correct: 3
+            },
+            {
+                question: "Which of the following metrics is best suited for estimating early project effort?",
+                options: [
+                    "Function Points (FP)",
+                    "Cyclomatic Complexity",
+                    "Halstead’s Difficulty",
+                    "Lines of Code (LOC)"
+                ],
+                correct: 0
+            },
+            {
+                question: "The primary challenge with software measurement is:",
+                options: [
+                    "Lack of available metrics",
+                    "Ensuring that measurements are meaningful and useful",
+                    "Measuring hardware configurations",
+                    "Counting test cases"
+                ],
+                correct: 1
+            },
+            {
+                question: "The Function Point method is mainly used for:",
+                options: [
+                    "Measuring execution time",
+                    "Estimating system performance",
+                    "Estimating project effort and cost",
+                    "Evaluating software defects"
+                ],
+                correct: 2
+            },
+            {
+                question: "In Use-Case Points (UCP), the Value Adjustment Factor (VAF) is used to:",
+                options: [
+                    "Count the number of use cases",
+                    "Adjust UCP values based on system complexity factors",
+                    "Calculate software cost",
+                    "Measure project success"
+                ],
+                correct: 1
+            },
+            {
+                question: "In software measurement, which of the following is an example of an external attribute?",
+                options: [
+                    "Maintainability",
+                    "Number of classes in a system",
+                    "Cyclomatic Complexity",
+                    "Number of functions"
+                ],
+                correct: 0
+            },
+            {
+                question: "In the Goal-Question-Metric (GQM) approach, which step follows defining goals?",
+                options: [
+                    "Assigning weights to metrics",
+                    "Identifying questions that help evaluate the goals",
+                    "Measuring execution speed",
+                    "Writing test cases"
+                ],
+                correct: 1
+            },
+            {
+                question: "What is the main advantage of Halstead’s Software Science?",
+                options: [
+                    "It measures customer satisfaction",
+                    "It estimates effort and development time",
+                    "It measures software reliability",
+                    "It helps in debugging code"
+                ],
+                correct: 1
+            },
+            {
+                question: "Which of the following is not a part of Use-Case Point estimation?",
+                options: [
+                    "Use-Case Complexity",
+                    "Actor Complexity",
+                    "Value Adjustment Factor",
+                    "Number of functions in a program"
+                ],
+                correct: 3
+            },
+            {
+                question: "Function Points can be used to:",
+                options: [
+                    "Measure the time complexity of an algorithm",
+                    "Estimate project effort and cost",
+                    "Determine execution time of a software product",
+                    "Measure database performance"
+                ],
+                correct: 1
+            },
+            {
+                question: "In Function Point Analysis (FPA), External Inputs (EI) refer to:",
+                options: [
+                    "User-provided inputs that modify internal data",
+                    "System-generated test cases",
+                    "External database queries",
+                    "Memory allocations"
+                ],
+                correct: 0
+            },
+            {
+                question: "What is the primary purpose of Goal-Question-Metric (GQM)?",
+                options: [
+                    "To create user stories",
+                    "To derive meaningful software metrics from business goals",
+                    "To measure defect density",
+                    "To track test case coverage"
+                ],
+                correct: 1
+            },
+            {
+                question: "Object-Oriented metrics typically focus on:",
+                options: [
+                    "Number of test cases",
+                    "External hardware requirements",
+                    "Reusability, coupling, and cohesion",
+                    "Execution speed"
+                ],
+                correct: 2
+            },
+            {
+                question: "What is the main purpose of Earned Value Management (EVM)?",
+                options: [
+                    "To estimate future costs",
+                    "To measure a project’s progress",
+                    "To calculate employee performance",
+                    "To allocate resources effectively"
+                ],
+                correct: 1
+            },
+            {
+                question: "Which of the following is a component of Earned Value Analysis (EVA)?",
+                options: [
+                    "Budget Cost of Work Performed (BCWP)",
+                    "Total Estimated Cost (TEC)",
+                    "Actual Cost of Work Performed (ACWP)",
+                    "Resource Utilization Metrics"
+                ],
+                correct: 2
+            },
+            {
+                question: "In Earned Value Analysis, what does BCWS stand for?",
+                options: [
+                    "Budgeted Cost of Work Schedule",
+                    "Budgeted Cost of Work Scheduled",
+                    "Budgeted Completion Work Schedule",
+                    "Baseline Completion Work Status"
+                ],
+                correct: 1
+            },
+            {
+                question: "The Earned Value Method (EVM) is primarily used to track which of the following?",
+                options: [
+                    "Time only",
+                    "Cost and schedule performance",
+                    "Team performance",
+                    "Project resources usage"
+                ],
+                correct: 1
+            },
+            {
+                question: "A cost variance (CV) is calculated by comparing which two values?",
+                options: [
+                    "ACWP and BAC",
+                    "BCWP and ACWP",
+                    "SV and ACWP",
+                    "BCWS and BAC"
+                ],
+                correct: 1
+            },
+            {
+                question: "What does a Schedule Variance (SV) of less than zero indicate?",
+                options: [
+                    "The project is ahead of schedule",
+                    "The project is behind schedule",
+                    "The project is on time",
+                    "There is a cost overrun"
+                ],
+                correct: 1
+            },
+            {
+                question: "What does SPI stand for in Earned Value Management?",
+                options: [
+                    "Schedule Performance Index",
+                    "Software Process Index",
+                    "System Performance Indicator",
+                    "Software Process Indicator"
+                ],
+                correct: 0
+            },
+            {
+                question: "Which of the following is NOT a standard type of software testing?",
+                options: [
+                    "Unit testing",
+                    "Integration testing",
+                    "Design testing",
+                    "Regression testing"
+                ],
+                correct: 2
+            },
+            {
+                question: "White-box testing is mainly used to examine:",
+                options: [
+                    "User interface",
+                    "Internal logic and structure of the code",
+                    "System requirements",
+                    "Overall system performance"
+                ],
+                correct: 1
+            },
+            {
+                question: "What is the primary difference between white-box and black-box testing?",
+                options: [
+                    "White-box testing focuses on system functionality",
+                    "White-box testing requires knowledge of the internal structure",
+                    "Black-box testing examines internal code",
+                    "Black-box testing requires access to system source code"
+                ],
+                correct: 1
+            },
+            {
+                question: "What is the primary function of a test case?",
+                options: [
+                    "To define the test strategy",
+                    "To specify the inputs, execution conditions, and expected outcomes",
+                    "To define the software requirements",
+                    "To measure system reliability"
+                ],
+                correct: 1
+            },
+            {
+                question: "Which of the following is true about test case creation based on equivalence classes?",
+                options: [
+                    "Each test case represents one input state",
+                    "Multiple test cases for similar input states are necessary",
+                    "A single test case can cover multiple input conditions if they are equivalent",
+                    "It is necessary to create a test case for each possible input combination"
+                ],
+                correct: 2
+            },
+            {
+                question: "What are boundary conditions in test case creation?",
+                options: [
+                    "Testing the software with extreme input values",
+                    "Testing the software with average input values",
+                    "Creating multiple test cases for the same condition",
+                    "Validating the user interface design"
+                ],
+                correct: 0
+            },
+            {
+                question: "What does “Quality in Use” measure according to ISO 9126?",
+                options: [
+                    "The internal performance of software",
+                    "The effectiveness, efficiency, and satisfaction of users while using the software",
+                    "The level of user security",
+                    "The compliance with industry standards"
+                ],
+                correct: 1
+            },
+            {
+                question: "In the ISO 9126 model, which characteristic is related to how well the system can handle errors and recover?",
+                options: [
+                    "Efficiency",
+                    "Portability",
+                    "Reliability",
+                    "Usability"
+                ],
+                correct: 2
+            },
+            {
+                question: "What is the focus of McCall’s quality model?",
+                options: [
+                    "Internal software process efficiency",
+                    "Cost-effectiveness of software development",
+                    "External software quality as perceived by the users",
+                    "Developer satisfaction"
+                ],
+                correct: 2
+            },
+            {
+                question: "The McCall quality model includes three types of elements. Which of the following is one of them?",
+                options: [
+                    "Performance metrics",
+                    "System integration measures",
+                    "Quality criteria",
+                    "Error detection protocols"
+                ],
+                correct: 2
+            },
+            {
+                question: "What does “fitness for use” mean in the context of software quality?",
+                options: [
+                    "The software works only for its intended audience",
+                    "The software works based on user feedback",
+                    "The software meets the needs and expectations of users",
+                    "The software complies with all coding standards"
+                ],
+                correct: 2
+            },
+            {
+                question: "Which of the following ISO 9126 attributes deals with the software's ability to prevent unauthorized access?",
+                options: [
+                    "Efficiency",
+                    "Safety",
+                    "Security",
+                    "Functionality"
+                ],
+                correct: 2
+            },
+            {
+                question: "What is meant by “usability” in the context of software quality?",
+                options: [
+                    "The speed of the system",
+                    "The software's ability to adapt to changes",
+                    "The ease of use and learnability for the user",
+                    "The software’s resource consumption"
+                ],
+                correct: 2
+            },
+            {
+                question: "In software testing, what is a 'test stub'?",
+                options: [
+                    "A piece of code that simulates a system component",
+                    "A dummy test case with no expected results",
+                    "A temporary method used for testing incomplete modules",
+                    "A tool for automating the testing process"
+                ],
+                correct: 0
+            },
+            {
+                question: "Which of the following best defines 'software quality assurance (SQA)'?",
+                options: [
+                    "The process of developing software",
+                    "The systematic process of monitoring and improving software quality throughout the development lifecycle",
+                    "The process of testing software only after development",
+                    "A set of tools to automate software testing"
+                ],
+                correct: 1
+            },
+            {
+                question: "The term 'unit testing' refers to:",
+                options: [
+                    "Testing software after full system integration",
+                    "Testing the software’s interaction with other systems",
+                    "Testing individual components or functions of the software",
+                    "Testing the software under load conditions"
+                ],
+                correct: 2
+            },
+            {
+                question: "What is the main goal of system testing?",
+                options: [
+                    "To verify system functionality under normal conditions",
+                    "To perform initial tests on components",
+                    "To test the system’s robustness in a real-world environment",
+                    "To evaluate the design of the system"
+                ],
+                correct: 2
+            },
+            {
+                question: "What is the primary purpose of an integration test?",
+                options: [
+                    "To check the software against user requirements",
+                    "To verify that multiple components work together as expected",
+                    "To assess the usability of the software",
+                    "To evaluate individual components of the system"
+                ],
+                correct: 1
+            },
+            {
+                question: "Which of the following defines 'acceptance testing'?",
+                options: [
+                    "Verifying that the system meets technical specifications",
+                    "Verifying that the system meets user needs and expectations",
+                    "Testing system performance under heavy load",
+                    "Testing the system for security vulnerabilities"
+                ],
+                correct: 1
+            },
+            {
+                question: "In the ISO 9126 standard, which quality characteristic involves the system’s ability to operate efficiently with minimal resource usage?",
+                options: [
+                    "Usability",
+                    "Efficiency",
+                    "Reliability",
+                    "Portability"
+                ],
+                correct: 1
+            },
+            {
+                question: "The purpose of regression testing is to:",
+                options: [
+                    "Test the system's response to new user inputs",
+                    "Ensure that new changes do not introduce new bugs",
+                    "Validate that the previous functionality still works after a change",
+                    "Measure the overall system's performance"
+                ],
+                correct: 2
+            },
+            {
+                question: "Which model is used for evaluating internal software quality?",
+                options: [
+                    "McCall’s model",
+                    "Boehm’s model",
+                    "ISO 9126",
+                    "SATC Quality model"
+                ],
+                correct: 0
+            },
+            {
+                question: "What is 'defect density' in software measurement?",
+                options: [
+                    "The number of failed tests",
+                    "The number of defects found during regression testing",
+                    "The number of defects per unit of code",
+                    "The percentage of functionality covered by tests"
+                ],
+                correct: 2
+            },
+            {
+                question: "What does the 'Cost Performance Index (CPI)' indicate in Earned Value Management?",
+                options: [
+                    "The quality of work performed",
+                    "The estimated final cost of the project",
+                    "The efficiency of the cost spent on the project",
+                    "The time taken to complete project milestones"
+                ],
+                correct: 2
+            },
+            {
+                question: "What is meant by 'test coverage' in software testing?",
+                options: [
+                    "The percentage of system features tested",
+                    "The degree to which the software's code is tested",
+                    "The performance of the system during testing",
+                    "The number of defects found during the testing process"
+                ],
+                correct: 1
+            },
+            {
+                question: "What is the primary metric for assessing the progress of a project in EVM?",
+                options: [
+                    "Earned Value (EV)",
+                    "Schedule performance index (SPI)",
+                    "Cost variance (CV)",
+                    "Time variance (TV)"
+                ],
+                correct: 0
+            },
+            {
+                question: "Which of the following testing levels focuses on validating system functionality after integrating multiple modules?",
+                options: [
+                    "Unit testing",
+                    "Acceptance testing",
+                    "Integration testing",
+                    "Regression testing"
+                ],
+                correct: 2
+            },
+            {
+                question: "What does the acronym 'CUPRIMDA' stand for in the context of software quality models?",
+                options: [
+                    "Capability, Usability, Performance, Reliability, Installability, Maintainability, Documentation, Availability",
+                    "Control, Use, Process, Reliability, Infrastructure, Maintenance, Data, Analytics",
+                    "Coverage, Uniformity, Performance, Rework, Installation, Maintenance, Data, Approval",
+                    "Capability, Usability, Performance, Reliability, Installability, Maintainability, Documentation, Availability"
+                ],
+                correct: 0
+            },
+            {
+                question: "Which testing method involves verifying the software with real-world use cases and interaction between the components?",
+                options: [
+                    "Black-box testing",
+                    "Regression testing",
+                    "Unit testing",
+                    "Load testing"
+                ],
+                correct: 0
+            },
+            {
+                question: "Which of the following is not a software size measurement?",
+                options: [
+                    "Length",
+                    "Complexity",
+                    "Reusability",
+                    "Execution Speed"
+                ],
+                correct: 3
+            },
+            {
+                question: "What is the basic unit of length measurement in software?",
+                options: [
+                    "Function Point (FP)",
+                    "Lines of Code (LOC)",
+                    "Object Point (OP)",
+                    "Cyclomatic Complexity"
+                ],
+                correct: 1
+            },
+            {
+                question: "Function Point (FP) is measured using:",
+                options: [
+                    "Source code analysis",
+                    "Number of lines of code",
+                    "System functionality",
+                    "Memory consumption"
+                ],
+                correct: 2
+            },
+            {
+                question: "Which of the following factors are used in Function Point Analysis (FPA)?",
+                options: [
+                    "Number of external inputs (EI)",
+                    "Number of external outputs (EO)",
+                    "Number of use cases",
+                    "Number of internal logical files (ILF)"
+                ],
+                correct: [0, 1, 3]
+            },
+            {
+                question: "Which of the following is true regarding Function Points (FP)?",
+                options: [
+                    "FP can only be counted after coding is completed",
+                    "FP is independent of programming language",
+                    "FP is always smaller than LOC",
+                    "FP and LOC are equivalent"
+                ],
+                correct: 1
+            },
+            {
+                question: "What is the relationship between Function Points and LOC?",
+                options: [
+                    "1 FP corresponds to the same LOC for all programming languages",
+                    "FP is usually converted into LOC based on the programming language used",
+                    "FP and LOC are identical metrics",
+                    "There is no correlation between FP and LOC"
+                ],
+                correct: 1
+            },
+            {
+                question: "How is defect density commonly measured?",
+                options: [
+                    "Defects per Function Point",
+                    "Defects per KLOC (Thousand Lines of Code)",
+                    "Total number of defects in the project",
+                    "Number of user complaints"
+                ],
+                correct: [0, 1]
+            },
+            {
+                question: "Which of the following is a widely used metric for software complexity?",
+                options: [
+                    "Object Points",
+                    "Cyclomatic Complexity",
+                    "Feature Points",
+                    "External Inputs"
+                ],
+                correct: 1
+            },
+            {
+                question: "Cyclomatic complexity measures:",
+                options: [
+                    "The number of variables in a program",
+                    "The number of independent paths in a program",
+                    "The total number of function calls",
+                    "The number of loops in a program"
+                ],
+                correct: 1
+            },
+            {
+                question: "What is the key difference between Function Points and Feature Points?",
+                options: [
+                    "Feature Points include an algorithmic complexity factor",
+                    "Function Points are only used in real-time systems",
+                    "Feature Points are calculated using LOC",
+                    "Function Points are a subjective measure"
+                ],
+                correct: 0
+            },
+            {
+                question: "In the Object Point method, what elements are counted to determine size?",
+                options: [
+                    "Screens",
+                    "Reports",
+                    "User inputs",
+                    "Third-generation language components"
+                ],
+                correct: [0, 1, 3]
+            },
+            {
+                question: "Use-Case Points are determined using:",
+                options: [
+                    "Number of actors and use cases",
+                    "The complexity of the programming language",
+                    "Memory consumption of the application",
+                    "Number of user stories in Agile development"
+                ],
+                correct: 0
+            },
+            {
+                question: "How do you determine the complexity of a use case?",
+                options: [
+                    "Based on the number of actors interacting with it",
+                    "Based on the number of transactions in the use case",
+                    "Based on the size of the source code",
+                    "Based on the user interface complexity"
+                ],
+                correct: 1
+            },
+            {
+                question: "Which formula is used to estimate effort using Function Points?",
+                options: [
+                    "Effort = FP × LOC",
+                    "Effort = FP / Productivity (PROD)",
+                    "Effort = Defect Density × KLOC",
+                    "Effort = Cyclomatic Complexity × Number of Functions"
+                ],
+                correct: 1
+            },
+            {
+                question: "Which of the following is not a factor in estimating software development effort?",
+                options: [
+                    "Developer experience",
+                    "Reusability of components",
+                    "Network latency",
+                    "Complexity of software requirements"
+                ],
+                correct: 2
+            },
+            {
+                question: "Which of the following is a disadvantage of Function Point Analysis?",
+                options: [
+                    "It is dependent on programming language",
+                    "It cannot be used for estimating early in the software lifecycle",
+                    "It is difficult to apply to business applications",
+                    "It is only useful for object-oriented systems"
+                ],
+                correct: 0
+            },
+            {
+                question: "What does Reuse Density measure?",
+                options: [
+                    "The percentage of code reused in a project",
+                    "The number of external function calls",
+                    "The complexity of reusable components",
+                    "The memory footprint of reusable libraries"
+                ],
+                correct: 0
+            },
+            {
+                question: "Which of the following is not a recent approach in software size estimation?",
+                options: [
+                    "Decomposition",
+                    "Expert opinion",
+                    "Object-oriented programming",
+                    "Class-code expansion"
+                ],
+                correct: 2
+            },
+            {
+                question: "What does the class-code expansion method involve?",
+                options: [
+                    "Expanding the number of user stories in a project",
+                    "Predicting the final software size by expanding design classes",
+                    "Measuring the complexity of GUI design",
+                    "Increasing the number of developers in a project"
+                ],
+                correct: 1
+            },
+            {
+                question: "Which of the following is not a valid software measurement concept?",
+                options: [
+                    "Size",
+                    "Complexity",
+                    "Cost per function",
+                    "Data mining"
+                ],
+                correct: 3
+            },
+            {
+                question: "What does a CPI value of less than 1 indicate?",
+                options: [
+                    "The project is ahead of schedule and under budget",
+                    "The project is behind schedule and over budget",
+                    "The project is over budget",
+                    "The project is under budget"
+                ],
+                correct: 2
+            },
+            {
+                question: "What is the primary purpose of software quality metrics?",
+                options: [
+                    "To determine project schedule",
+                    "To determine project cost",
+                    "To measure and improve the quality of software",
+                    "To document software development processes"
+                ],
+                correct: 2
+            },
+            {
+                question: "Which technique in software cost estimation involves breaking down a project into smaller, more manageable parts and estimating costs for each part separately before adding them up?",
+                options: [
+                    "Expert judgment",
+                    "Algorithmic models",
+                    "Bottom-up estimation",
+                    "Top-down estimation"
+                ],
+                correct: 2
+            },
+            {
+                question: "What is the primary purpose of GQM?",
+                options: [
+                    "To determine project schedule",
+                    "To determine project cost",
+                    "To determine project quality",
+                    "To measure progress toward achieving goals"
+                ],
+                correct: 3
+            },
+            {
+                question: "What is the formula for Cost Performance Index (CPI)?",
+                options: [
+                    "CPI = Budget at Completion (BAC) / Actual Cost (AC)",
+                    "CPI = Earned Value (EV) / Actual Cost (AC)",
+                    "CPI = Planned Value (PV) / Actual Cost (AC)",
+                    "CPI = Earned Value (EV) / Planned Value (PV)"
+                ],
+                correct: 1
+            },
+            {
+                question: "In Use Case Point Approach, which following is not type of actor?",
+                options: [
+                    "Simple Actor",
+                    "Average Actor",
+                    "Difficult Actor",
+                    "Complex Actor"
+                ],
+                correct: 2
+            },
+            {
+                question: "Which of the following is NOT a technique used in software cost estimation?",
+                options: [
+                    "Expert judgment",
+                    "Algorithmic models",
+                    "Machine learning",
+                    "Agile development"
+                ],
+                correct: 3
+            },
+            {
+                question: "Which internal product attribute is used to measure program functionality based on user requirements?",
+                options: [
+                    "Functionality",
+                    "Complexity",
+                    "Reuse",
+                    "Length"
+                ],
+                correct: 0
+            },
+            {
+                question: "Which metric is used to measure program complexity based on operators and operands?",
+                options: [
+                    "Lines of code (LOC)",
+                    "Cyclomatic complexity",
+                    "Function points (FP)",
+                    "Reuse frequency"
+                ],
+                correct: 0
+            },
+            {
+                question: "What is the fourth step in implementing GQM?",
+                options: [
+                    "Defining the goals of the project",
+                    "Creating a list of questions to ask about the project",
+                    "Creating a list of metrics to measure",
+                    "Collecting data about the project"
+                ],
+                correct: 3
+            }
+        ];
+
+        let currentQuestionIndex = 0;
+        let correctCount = 0;
+        let timer;
+        let timeElapsed = 0;
+        let quizStarted = false;
+        let quizFinished = false;
+        let selectedAnswers = [];
+        let selectedQuestions = [];
+        let numQuestions = 106;
+        let realTimeScoring = true;
+
+        // DOM elements
+        const loadingScreen = document.getElementById('loadingScreen');
+        const quizContainer = document.getElementById('quizContainer');
+        const resultContainer = document.getElementById('resultContainer');
+        const questionText = document.getElementById('questionText');
+        const optionsContainer = document.getElementById('optionsContainer');
+        const currentQuestionElement = document.getElementById('currentQuestion');
+        const correctCountElement = document.getElementById('correctCount');
+        const timerElement = document.getElementById('timer');
+        const progressBar = document.getElementById('progressBar');
+        const questionNumberElement = document.getElementById('questionNumber');
+        const prevBtn = document.getElementById('prevBtn');
+        const nextBtn = document.getElementById('nextBtn');
+        const submitBtn = document.getElementById('submitBtn');
+        const finalScoreElement = document.getElementById('finalScore');
+        const scoreMessageElement = document.getElementById('scoreMessage');
+        const totalQuestionsElement = document.getElementById('totalQuestions');
+        const numQuestionsSelect = document.getElementById('numQuestions');
+        const realTimeScoringCheckbox = document.getElementById('realTimeScoring');
+
+        const restartQuiz = () => {
+            currentQuestionIndex = 0;
+            correctCount = 0;
+            timeElapsed = 0;
+            quizStarted = false;
+            quizFinished = false;
+            selectedAnswers = new Array(numQuestions).fill(-1);
+            selectedQuestions = [];
+
+            loadingScreen.classList.remove('hidden');
+            quizContainer.classList.add('hidden');
+            resultContainer.classList.add('hidden');
+
+            clearInterval(timer);
+            updateScore();
+        };
+
+        const startQuiz = () => {
+            numQuestions = parseInt(numQuestionsSelect.value);
+            realTimeScoring = realTimeScoringCheckbox.checked;
+
+            // Randomly select questions
+            selectedQuestions = [];
+            const shuffledIndices = Array.from({ length: allQuestions.length }, (_, i) => i).sort(() => Math.random() - 0.5);
+            for (let i = 0; i < numQuestions && i < allQuestions.length; i++) {
+                selectedQuestions.push(allQuestions[shuffledIndices[i]]);
+            }
+
+            selectedAnswers = new Array(numQuestions).fill(-1);
+            totalQuestionsElement.textContent = numQuestions;
+
+            quizStarted = true;
+            currentQuestionIndex = 0;
+            updateQuestion();
+            startTimer();
+        };
+
+        const startTimer = () => {
+            timer = setInterval(() => {
+                timeElapsed++;
+                const minutes = Math.floor(timeElapsed / 60);
+                const seconds = timeElapsed % 60;
+                timerElement.textContent = `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+            }, 1000);
+        };
+
+        const updateQuestion = () => {
+            if (currentQuestionIndex >= selectedQuestions.length) {
+                finishQuiz();
+                return;
+            }
+
+            const question = selectedQuestions[currentQuestionIndex];
+            questionText.textContent = question.question;
+            optionsContainer.innerHTML = '';
+
+            question.options.forEach((option, index) => {
+                const optionElement = document.createElement('div');
+                optionElement.className = 'option';
+                optionElement.textContent = option;
+
+                // Highlight previously selected answer
+                if (selectedAnswers[currentQuestionIndex] !== -1) {
+                    if (selectedAnswers[currentQuestionIndex] === index) {
+                        optionElement.classList.add('selected');
+                        if (realTimeScoring) {
+                            if (index === question.correct || (Array.isArray(question.correct) && question.correct.includes(index))) {
+                                optionElement.classList.add('correct');
+                            } else {
+                                optionElement.classList.add('incorrect');
+                            }
+                        }
+                    } else if (realTimeScoring && selectedAnswers[currentQuestionIndex] !== -1 && (index === question.correct || (Array.isArray(question.correct) && question.correct.includes(index)))) {
+                        optionElement.classList.add('correct');
+                    }
+                }
+
+                optionElement.onclick = () => selectOption(index);
+                optionsContainer.appendChild(optionElement);
+            });
+
+            currentQuestionElement.textContent = currentQuestionIndex + 1;
+            questionNumberElement.textContent = `Câu ${currentQuestionIndex + 1}`;
+            updateProgressBar();
+
+            // Update navigation buttons
+            prevBtn.classList.toggle('hidden', currentQuestionIndex === 0);
+            nextBtn.classList.toggle('hidden', currentQuestionIndex === selectedQuestions.length - 1);
+        };
+
+        const selectOption = (index) => {
+            if (quizFinished) return;
+
+            // Clear previous selection visually
+            document.querySelectorAll('.option').forEach(opt => {
+                opt.classList.remove('selected', 'correct', 'incorrect');
+            });
+
+            // Mark new selection
+            const selectedOption = document.querySelectorAll('.option')[index];
+            selectedOption.classList.add('selected');
+
+            // Store the answer
+            selectedAnswers[currentQuestionIndex] = index;
+
+            // Real-time scoring
+            if (realTimeScoring) {
+                const question = selectedQuestions[currentQuestionIndex];
+                if (index === question.correct || (Array.isArray(question.correct) && question.correct.includes(index))) {
+                    selectedOption.classList.add('correct');
+                } else {
+                    selectedOption.classList.add('incorrect');
+                    // Highlight correct answer(s)
+                    question.options.forEach((_, i) => {
+                        if (i === question.correct || (Array.isArray(question.correct) && question.correct.includes(i))) {
+                            document.querySelectorAll('.option')[i].classList.add('correct');
+                        }
+                    });
+                }
+                updateScore();
+            }
+        };
+
+        const calculateScore = () => {
+            correctCount = 0;
+            selectedAnswers.forEach((answer, index) => {
+                if (answer === -1) return; // Skip unanswered questions
+                const question = selectedQuestions[index];
+                if (answer === question.correct || (Array.isArray(question.correct) && question.correct.includes(answer))) {
+                    correctCount++;
+                }
+            });
+        };
+
+        const updateScore = () => {
+            calculateScore();
+            correctCountElement.textContent = `Số câu đúng: ${correctCount}`;
+        };
+
+        const updateProgressBar = () => {
+            const progress = ((currentQuestionIndex + 1) / selectedQuestions.length) * 100;
+            progressBar.style.width = `${progress}%`;
+        };
+
+        const previousQuestion = () => {
+            if (currentQuestionIndex > 0) {
+                currentQuestionIndex--;
+                updateQuestion();
+            }
+        };
+
+        const nextQuestion = () => {
+            if (currentQuestionIndex < selectedQuestions.length - 1) {
+                currentQuestionIndex++;
+                updateQuestion();
+            }
+        };
+
+        const finishQuiz = () => {
+            quizFinished = true;
+            clearInterval(timer);
+            calculateScore();
+
+            loadingScreen.classList.add('hidden');
+            quizContainer.classList.add('hidden');
+            resultContainer.classList.remove('hidden');
+
+            finalScoreElement.textContent = `Số câu đúng: ${correctCount} / ${selectedQuestions.length}`;
+            const scorePercentage = (correctCount / selectedQuestions.length) * 100;
+            scoreMessageElement.textContent = `Bạn đã hoàn thành bài thi với điểm số: ${scorePercentage.toFixed(2)}%`;
+        };
+
+        // Event listeners
+        document.getElementById('restartBtn').onclick = restartQuiz;
+        document.getElementById('startBtn').onclick = () => {
+            loadingScreen.classList.add('hidden');
+            quizContainer.classList.remove('hidden');
+            startQuiz();
+        };
+        prevBtn.onclick = previousQuestion;
+        nextBtn.onclick = nextQuestion;
+        submitBtn.onclick = finishQuiz;
+
+        // Initialize the quiz
+        updateScore();
+    </script>
+</body>
+
+</html>
